@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go WASM BFV Demo</title>
+    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Required Go WASM glue file -->
+    <script src="wasm_exec.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>WASM BFV Encryption</h1>
+        <p class="subhead">Vanilla Go compiled to WebAssembly. Zero JS cryptography.</p>
+    </header>
+
+    <main class="grid-layout">
+        <section class="card control-panel">
+            <h2>Controls</h2>
+            
+            <div class="section-divider">
+                <h3>1. Setup Phase</h3>
+                <button id="btnKeygen" class="btn btn-primary" disabled>Loading WASM...</button>
+                <div id="keyStatus" class="status-indicator hidden">
+                    <span class="dot success"></span> Keys Active
+                </div>
+            </div>
+
+            <div class="section-divider disabled-overlay" id="encryptionStep">
+                <h3>2. Encryption Phase</h3>
+                <div class="input-group">
+                    <label for="num1">Number A:</label>
+                    <input type="number" id="num1" min="0" max="255" value="42">
+                </div>
+                <div class="input-group">
+                    <label for="num2">Number B:</label>
+                    <input type="number" id="num2" min="0" max="255" value="15">
+                </div>
+                <button id="btnEncrypt" class="btn btn-secondary">Encrypt Values</button>
+            </div>
+
+            <div class="section-divider disabled-overlay" id="computationStep">
+                <h3>3. Computation Phase (Cloud)</h3>
+                <button id="btnAddCipher" class="btn btn-secondary">Add Ciphertexts</button>
+            </div>
+
+            <div class="section-divider disabled-overlay" id="decryptionStep">
+                <h3>4. Decryption Phase</h3>
+                <button id="btnDecrypt" class="btn btn-primary">Decrypt Result</button>
+            </div>
+        </section>
+
+        <section class="card log-panel">
+            <h2>Operation Log</h2>
+            <div id="logOutput" class="log-container"></div>
+        </section>
+    </main>
+</div>
+
+<script>
+    // State variables
+    let sk = null, pk0 = null, pk1 = null;
+    let cipherA = null, cipherB = null, cipherResult = null;
+
+    // Load and instantiate the Go WASM file
+    const go = new Go();
+    WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
+        go.run(result.instance);
+        document.getElementById('btnKeygen').disabled = false;
+        document.getElementById('btnKeygen').innerText = "Generate Keys";
+        log('System', 'Go WebAssembly module successfully loaded!');
+    }).catch(err => {
+        console.error(err);
+        log('Error', 'Failed to load main.wasm. Check console.');
+    });
+
+    // Helper for DOM Logging
+    const log = (title, data) => {
+        const logBox = document.getElementById('logOutput');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        
+        let displayData = data;
+        if (typeof data === 'object') {
+            displayData = JSON.stringify(data).substring(0, 80) + '...';
+        }
+        entry.innerHTML = `<div class="log-title">${title}</div><div class="log-data">${displayData}</div>`;
+        logBox.appendChild(entry);
+        logBox.scrollTop = logBox.scrollHeight;
+    };
+
+    // DOM Elements
+    const btnKeygen = document.getElementById('btnKeygen');
+    const btnEncrypt = document.getElementById('btnEncrypt');
+    const btnAddCipher = document.getElementById('btnAddCipher');
+    const btnDecrypt = document.getElementById('btnDecrypt');
+
+    const stepEnc = document.getElementById('encryptionStep');
+    const stepComp = document.getElementById('computationStep');
+    const stepDec = document.getElementById('decryptionStep');
+    const num1Input = document.getElementById('num1');
+    const num2Input = document.getElementById('num2');
+
+    // 1. Keygen Event
+    btnKeygen.addEventListener('click', () => {
+        log('Action', 'Calling goBfvKeyGen() in WASM...');
+        
+        const keysJsonStr = window.goBfvKeyGen();
+        const keys = JSON.parse(keysJsonStr);
+        
+        sk = keys.sk;
+        pk0 = keys.pk0;
+        pk1 = keys.pk1;
+        
+        log('Keys Generated', `Secret Key generated. N=8, Q=12289`);
+        
+        document.getElementById('keyStatus').classList.remove('hidden');
+        btnKeygen.disabled = true;
+        btnKeygen.innerText = "Keys Generated";
+        stepEnc.classList.add('active');
+        btnEncrypt.disabled = false;
+    });
+
+    // 2. Encrypt Event
+    btnEncrypt.addEventListener('click', () => {
+        const valA = parseInt(num1Input.value) || 0;
+        const valB = parseInt(num2Input.value) || 0;
+
+        log('Action', `Calling goBfvEncrypt() via WASM for ${valA} & ${valB}`);
+
+        const pk0Str = JSON.stringify(pk0);
+        const pk1Str = JSON.stringify(pk1);
+
+        const resAStr = window.goBfvEncrypt(valA, pk0Str, pk1Str);
+        const resBStr = window.goBfvEncrypt(valB, pk0Str, pk1Str);
+
+        cipherA = JSON.parse(resAStr);
+        cipherB = JSON.parse(resBStr);
+
+        log('Encryption Complete', cipherA);
+
+        stepComp.classList.add('active');
+        btnAddCipher.disabled = false;
+        btnEncrypt.disabled = true;
+    });
+
+    // 3. Add Ciphertexts Event
+    btnAddCipher.addEventListener('click', () => {
+        log('Action', 'Calling goBfvAdd() via WASM...');
+        
+        const c0aStr = JSON.stringify(cipherA.c0);
+        const c1aStr = JSON.stringify(cipherA.c1);
+        const c0bStr = JSON.stringify(cipherB.c0);
+        const c1bStr = JSON.stringify(cipherB.c1);
+
+        const resultStr = window.goBfvAdd(c0aStr, c1aStr, c0bStr, c1bStr);
+        cipherResult = JSON.parse(resultStr);
+
+        log('Computation Complete', cipherResult);
+
+        stepDec.classList.add('active');
+        btnDecrypt.disabled = false;
+        btnAddCipher.disabled = true;
+    });
+
+    // 4. Decrypt Event
+    btnDecrypt.addEventListener('click', () => {
+        log('Action', 'Calling goBfvDecrypt() via WASM...');
+
+        const c0Str = JSON.stringify(cipherResult.c0);
+        const c1Str = JSON.stringify(cipherResult.c1);
+        const skStr = JSON.stringify(sk);
+
+        const result = window.goBfvDecrypt(c0Str, c1Str, skStr);
+        const expected = (parseInt(num1Input.value) + parseInt(num2Input.value)) % 256;
+        
+        log('Decryption Output', `<span class="log-highlight">Result: ${result}</span> (Expected: ${expected})`);
+        
+        btnDecrypt.disabled = true;
+    });
+</script>
+</body>
+</html>
