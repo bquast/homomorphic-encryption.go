@@ -27,7 +27,7 @@ jobs:
       - run: |
           cd bfv
           GOOS=js GOARCH=wasm go build -o main.wasm bfv.go
-          cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" .
+          wget https://raw.githubusercontent.com/golang/go/release-branch.go1.22/misc/wasm/wasm_exec.js
           cd ..
           
       - uses: actions/configure-pages@v4
