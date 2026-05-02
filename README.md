@@ -11,6 +11,9 @@ BFV demo:
 
 ## References
 
+Falcetta, Alessandro (2022); Introduction to BFV HE ML, WCCI 2022 / Github.com:
+<https://github.com/AI-Tech-Research-Lab/Introduction-to-BFV-HE-ML>
+
 Hardy, Stephen (2021); A Homomorphic Encryption Illustrated Primer, Humanata.com; Web Archive snapshot: <https://web.archive.org/web/20230129025413/https://humanata.com/blog/illustrated_primer>
 
 Hoanger, Louis (2022); Introduction to the CKKS encryption scheme, Inferati.com; Web Archive snapshot:
