@@ -1,0 +1,255 @@
+/* =========================================
+   GENESIS DESIGN SYSTEM TOKENS
+   ========================================= */
+:root {
+    /* Colors */
+    --primary: #6366F1;
+    --primary-hover: #4F46E5;
+    --neutral: #9C9C9C;
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --text-primary: #0A0A0A;
+    --text-secondary: #6B6B6B;
+    --border: #E8E8EC;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --error: #EF4444;
+
+    /* Typography */
+    --font-display: 'General Sans', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-code: 'JetBrains Mono', monospace;
+}
+
+/* =========================================
+   BASE & TYPOGRAPHY
+   ========================================= */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 15px; /* Genesis body base */
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.03em; /* Tight letter spacing per spec */
+    margin: 0;
+}
+
+h1 { font-size: 60px; line-height: 1.1; } /* Headline */
+h2 { font-size: 32px; margin-bottom: 16px; } /* Section heading */
+h3 { font-size: 24px; margin-bottom: 8px; } /* Subhead */
+
+p { margin: 8px 0; line-height: 1.5; }
+.subhead { font-size: 20px; color: var(--text-secondary); font-weight: 400; margin-top: 12px; }
+.text-secondary { color: var(--text-secondary); font-size: 13px; }
+
+/* =========================================
+   LAYOUT & SPACING (4px grid)
+   ========================================= */
+.container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 64px 24px;
+}
+
+header {
+    margin-bottom: 64px;
+}
+
+.grid-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 768px) {
+    .grid-layout { grid-template-columns: 1fr; }
+    .container { padding: 32px 24px; }
+}
+
+/* =========================================
+   COMPONENTS (Cards, Elevations, Inputs)
+   ========================================= */
+
+/* Cards (12px radius, surface bg, hover lift) */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.section-divider {
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+    margin-top: 24px;
+    position: relative;
+}
+.section-divider:first-of-type {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+}
+
+/* Inputs (6px radius, subtle border, primary focus ring) */
+.input-group {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+input[type="number"] {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text-primary);
+    width: 100%;
+    box-sizing: border-box;
+    transition: all 200ms ease;
+}
+
+input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+/* Buttons (6px radius, medium size = 38px height) */
+.btn {
+    border: none;
+    border-radius: 6px;
+    padding: 0 16px;
+    height: 38px;
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 200ms ease;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    border-color: var(--neutral);
+    transform: translateY(-1px);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+/* =========================================
+   UI STATES & LISTS (Logs)
+   ========================================= */
+.disabled-overlay {
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.disabled-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 500;
+    margin-left: 16px;
+}
+.status-indicator.hidden { display: none; }
+
+.dot {
+    height: 8px;
+    width: 8px;
+    border-radius: 9999px;
+    display: inline-block;
+    margin-right: 8px;
+}
+.dot.success { background-color: var(--success); }
+
+/* Logs (Formatted as Genesis Lists) */
+.log-container {
+    max-height: 600px;
+    overflow-y: auto;
+    font-size: 13px;
+    margin-top: 16px;
+}
+
+.log-entry {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    transition: background-color 200ms ease;
+}
+.log-entry:hover {
+    background-color: rgba(245, 245, 245, 0.5); /* Subtle background change on hover */
+}
+.log-entry:last-child {
+    border-bottom: none;
+}
+
+.log-title {
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 4px;
+    font-family: var(--font-body);
+}
+
+.log-data {
+    color: var(--text-secondary);
+    font-family: var(--font-code);
+    word-break: break-all;
+}
+
+.log-highlight {
+    color: var(--text-primary);
+    font-weight: 600;
+}
