@@ -30,6 +30,9 @@ jobs:
           wget https://raw.githubusercontent.com/golang/go/release-branch.go1.22/misc/wasm/wasm_exec.js
           cd ..
           
+      - run: |
+          pandoc README.md -o index.html --standalone --css=bfv/style.css --metadata title="Homomorphic Encryption"
+          
       - uses: actions/configure-pages@v4
       
       - uses: actions/upload-pages-artifact@v3
