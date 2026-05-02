@@ -31,6 +31,8 @@ jobs:
           cd ..
           
       - run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc
           pandoc README.md -o index.html --standalone --css=bfv/style.css --metadata title="Homomorphic Encryption"
           
       - uses: actions/configure-pages@v4
