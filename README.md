@@ -12,7 +12,12 @@ Demos landing page:
 
 BFV demo:
 
-<https://bquast.github.io/homomorphic-encryption.go/bfv>
+<https://bquast.github.io/homomorphic-encryption.go/bfv.html>
+
+### BGV
+
+<https://bquast.github.io/homomorphic-encryption.go/bgv.html>
+
 
 
 ## References

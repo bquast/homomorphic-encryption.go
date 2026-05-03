@@ -24,16 +24,21 @@ jobs:
         with:
           go-version: '1.22'
           
-      - run: |
-          cd bfv
+      - name: Build WASM binaries
+        run: |
+          # Build each scheme directly from its file without needing go.mod
           GOOS=js GOARCH=wasm go build -o bfv.wasm bfv.go
-          wget https://raw.githubusercontent.com/golang/go/release-branch.go1.22/misc/wasm/wasm_exec.js
-          cd ..
+          GOOS=js GOARCH=wasm go build -o bgv.wasm bgv.go
           
-      - run: |
+          # Grab the required JS glue code
+          wget https://raw.githubusercontent.com/golang/go/release-branch.go1.22/misc/wasm/wasm_exec.js
+          
+      - name: Render README to HTML
+        run: |
           sudo apt-get update
           sudo apt-get install -y pandoc
-          pandoc README.md -o index.html --standalone --css=bfv/style.css --metadata title="Homomorphic Encryption"
+          # Convert README.md to index.html and inject the shared style.css
+          pandoc README.md -o index.html --standalone --css=style.css --metadata title="Homomorphic Encryption"
           
       - uses: actions/configure-pages@v4
       
