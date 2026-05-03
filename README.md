@@ -1,5 +1,7 @@
 # homomorphic-encryption.go
 
+[Grokking Grok explanation of Homomorphic Encryption](https://grok.com/share/c2hhcmQtMg_776a4ad3-9199-4128-a39f-b9891d03ff64)
+
 Homomorphic encryption schema in Go, compiled to WebAssembly (wasm) by Github Actions, for in-browser demos.
 
 Demos landing page:
