@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BGV Homomorphic Encryption Demo</title>
+    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <!-- Using the shared root stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="wasm_exec.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>BGV Encryption Demo</h1>
+        <p class="subhead">Brakerski-Gentry-Vaikuntanathan scheme (Modulus P=7)</p>
+        <a href="index.html" style="color: var(--primary); text-decoration: none; font-size: 14px;">&larr; Back to Schemes</a>
+    </header>
+
+    <main class="grid-layout">
+        <section class="card control-panel">
+            <h2>Controls</h2>
+            
+            <div class="section-divider">
+                <h3>1. Setup Phase</h3>
+                <p class="text-secondary">Generate Public Key (pk) and Secret Key (sk). Parameters: N=16, Q=868, P=7.</p>
+                <button id="btnKeygen" class="btn btn-primary" disabled>Loading WASM...</button>
+                <div id="keyStatus" class="status-indicator hidden">
+                    <span class="dot success"></span> Keys Active
+                </div>
+            </div>
+
+            <div class="section-divider disabled-overlay" id="encryptionStep">
+                <h3>2. Encryption Phase</h3>
+                <p class="text-secondary">Enter two integers (0 to 6) to encrypt. Messages are modulo P.</p>
+                <div class="input-group">
+                    <label for="num1">Number A:</label>
+                    <input type="number" id="num1" min="0" max="6" value="3">
+                </div>
+                <div class="input-group">
+                    <label for="num2">Number B:</label>
+                    <input type="number" id="num2" min="0" max="6" value="2">
+                </div>
+                <button id="btnEncrypt" class="btn btn-secondary">Encrypt Values</button>
+            </div>
+
+            <div class="section-divider disabled-overlay" id="computationStep">
+                <h3>3. Computation Phase (Cloud)</h3>
+                <div class="input-group">
+                    <label for="operationSelect">Homomorphic Operation:</label>
+                    <select id="operationSelect">
+                        <option value="add">Addition (A + B)</option>
+                        <option value="sub">Subtraction (A - B)</option>
+                        <option value="mult">Multiplication (A * B)</option>
+                        <option value="div">Division (A / B)</option>
+                    </select>
+                </div>
+                <button id="btnCompute" class="btn btn-secondary">Compute Ciphertext</button>
+            </div>
+
+            <div class="section-divider disabled-overlay" id="decryptionStep">
+                <h3>4. Decryption Phase</h3>
+                <button id="btnDecrypt" class="btn btn-primary">Decrypt Result</button>
+            </div>
+        </section>
+
+        <section class="card log-panel">
+            <h2>Operation Log</h2>
+            <div id="logOutput" class="log-container"></div>
+        </section>
+    </main>
+</div>
+
+<script>
+    let sk = null, pk0 = null, pk1 = null;
+    let cipherA = null, cipherB = null, cipherResult = null;
+    const P = 7;
+
+    const go = new Go();
+    WebAssembly.instantiateStreaming(fetch("bgv.wasm"), go.importObject).then((result) => {
+        go.run(result.instance);
+        document.getElementById('btnKeygen').disabled = false;
+        document.getElementById('btnKeygen').innerText = "Generate Keys";
+        log('System', 'Go WebAssembly module (bgv.wasm) successfully loaded!');
+    }).catch(err => {
+        console.error(err);
+        log('Error', 'Failed to load bgv.wasm. Check console.');
+    });
+
+    const log = (title, data) => {
+        const logBox = document.getElementById('logOutput');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        let displayData = data;
+        if (typeof data === 'object') displayData = JSON.stringify(data).substring(0, 80) + '...';
+        entry.innerHTML = `<div class="log-title">${title}</div><div class="log-data">${displayData}</div>`;
+        logBox.appendChild(entry);
+        logBox.scrollTop = logBox.scrollHeight;
+    };
+
+    const btnKeygen = document.getElementById('btnKeygen');
+    const btnEncrypt = document.getElementById('btnEncrypt');
+    const btnCompute = document.getElementById('btnCompute');
+    const btnDecrypt = document.getElementById('btnDecrypt');
+    const opSelect = document.getElementById('operationSelect');
+    
+    let currentOp = 'add';
+
+    btnKeygen.addEventListener('click', () => {
+        const keysJsonStr = window.goBgvKeyGen();
+        const keys = JSON.parse(keysJsonStr);
+        sk = keys.sk; pk0 = keys.pk0; pk1 = keys.pk1;
+        log('Keys Generated', 'Secret Key & Public Key generated for BGV.');
+        document.getElementById('keyStatus').classList.remove('hidden');
+        btnKeygen.disabled = true;
+        document.getElementById('encryptionStep').classList.add('active');
+        btnEncrypt.disabled = false;
+    });
+
+    btnEncrypt.addEventListener('click', () => {
+        let valA = parseInt(document.getElementById('num1').value) % P;
+        let valB = parseInt(document.getElementById('num2').value) % P;
+        
+        const pk0Str = JSON.stringify(pk0);
+        const pk1Str = JSON.stringify(pk1);
+
+        cipherA = JSON.parse(window.goBgvEncrypt(valA, pk0Str, pk1Str));
+        cipherB = JSON.parse(window.goBgvEncrypt(valB, pk0Str, pk1Str));
+
+        log('Encryption Complete', 'Generated Ciphertext A and B (Noise scaled by P).');
+        document.getElementById('computationStep').classList.add('active');
+        btnCompute.disabled = false;
+        btnEncrypt.disabled = true;
+    });
+
+    btnCompute.addEventListener('click', () => {
+        const op = opSelect.value;
+        const c0aStr = JSON.stringify(cipherA.ct0), c1aStr = JSON.stringify(cipherA.ct1);
+        const c0bStr = JSON.stringify(cipherB.ct0), c1bStr = JSON.stringify(cipherB.ct1);
+
+        if (op === 'add') {
+            cipherResult = JSON.parse(window.goBgvAdd(c0aStr, c1aStr, c0bStr, c1bStr));
+            currentOp = 'add';
+        } else if (op === 'sub') {
+            cipherResult = JSON.parse(window.goBgvSub(c0aStr, c1aStr, c0bStr, c1bStr));
+            currentOp = 'sub';
+        } else {
+            log('FHE Limitation', 'Multiplication/Division omitted in this demo due to Relinearization complexity!');
+            return;
+        }
+
+        log(`Homomorphic ${op.toUpperCase()}`, 'Successfully operated on encrypted polynomials.');
+        document.getElementById('decryptionStep').classList.add('active');
+        btnDecrypt.disabled = false;
+        btnCompute.disabled = true;
+        opSelect.disabled = true;
+    });
+
+    btnDecrypt.addEventListener('click', () => {
+        const c0Str = JSON.stringify(cipherResult.ct0);
+        const c1Str = JSON.stringify(cipherResult.ct1);
+        const skStr = JSON.stringify(sk);
+
+        const result = window.goBgvDecrypt(c0Str, c1Str, skStr);
+        
+        const valA = parseInt(document.getElementById('num1').value) % P;
+        const valB = parseInt(document.getElementById('num2').value) % P;
+        
+        let expected = currentOp === 'add' ? (valA + valB) % P : ((valA - valB) % P + P) % P;
+        
+        log('Decryption Output', `<span class="log-highlight">Result: ${result}</span> (Expected: ${expected})`);
+        btnDecrypt.disabled = true;
+    });
+</script>
+</body>
+</html>
