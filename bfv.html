@@ -69,14 +69,14 @@
 
     // Load and instantiate the Go WASM file
     const go = new Go();
-    WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
+    WebAssembly.instantiateStreaming(fetch("bfv.wasm"), go.importObject).then((result) => {
         go.run(result.instance);
         document.getElementById('btnKeygen').disabled = false;
         document.getElementById('btnKeygen').innerText = "Generate Keys";
         log('System', 'Go WebAssembly module successfully loaded!');
     }).catch(err => {
         console.error(err);
-        log('Error', 'Failed to load main.wasm. Check console.');
+        log('Error', 'Failed to load bfv.wasm. Check console.');
     });
 
     // Helper for DOM Logging

@@ -26,7 +26,7 @@ jobs:
           
       - run: |
           cd bfv
-          GOOS=js GOARCH=wasm go build -o main.wasm bfv.go
+          GOOS=js GOARCH=wasm go build -o bfv.wasm bfv.go
           wget https://raw.githubusercontent.com/golang/go/release-branch.go1.22/misc/wasm/wasm_exec.js
           cd ..
           
