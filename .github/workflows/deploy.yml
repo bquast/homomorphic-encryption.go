@@ -29,6 +29,7 @@ jobs:
           # Build each scheme directly from its file without needing go.mod
           GOOS=js GOARCH=wasm go build -o bfv.wasm bfv.go
           GOOS=js GOARCH=wasm go build -o bgv.wasm bgv.go
+          GOOS=js GOARCH=wasm go build -o ckks.wasm ckks.go
           
           # Grab the required JS glue code
           wget https://raw.githubusercontent.com/golang/go/release-branch.go1.22/misc/wasm/wasm_exec.js

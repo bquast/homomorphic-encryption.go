@@ -18,6 +18,10 @@ BFV demo:
 
 <https://bquast.github.io/homomorphic-encryption.go/bgv.html>
 
+### CKKS
+
+<https://bquast.github.io/homomorphic-encryption.go/ckks.html>
+
 
 
 ## References

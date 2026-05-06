@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go WASM CKKS Demo</title>
+    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="wasm_exec.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>WASM CKKS Encryption</h1>
+        <p class="subhead">Approximate Homomorphic Encryption for Complex Vectors.</p>
+        <a href="index.html" style="color: var(--primary); text-decoration: none; font-size: 14px;">&larr; Back to Schemes</a>
+    </header>
+
+    <main class="grid-layout">
+        <section class="card control-panel">
+            <h2>Pipeline Stages</h2>
+            
+            <div class="section-divider" id="encodeStep">
+                <h3>1. Vector Encoding</h3>
+                <p class="text-secondary">Converts complex vector z into an integer polynomial.</p>
+                <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+                    <div class="input-group" style="flex:1;">
+                        <label>z[0] Real / Imag</label>
+                        <div style="display:flex; gap: 4px;">
+                            <input type="number" id="z0_re" value="3" step="0.1">
+                            <input type="number" id="z0_im" value="4" step="0.1">
+                        </div>
+                    </div>
+                    <div class="input-group" style="flex:1;">
+                        <label>z[1] Real / Imag</label>
+                        <div style="display:flex; gap: 4px;">
+                            <input type="number" id="z1_re" value="2" step="0.1">
+                            <input type="number" id="z1_im" value="-1" step="0.1">
+                        </div>
+                    </div>
+                </div>
+                <button id="btnEncode" class="btn btn-primary" disabled>Loading WASM...</button>
+            </div>
+
+            <div class="section-divider disabled-overlay" id="keygenStep">
+                <h3>2. Setup Phase (RLWE)</h3>
+                <p class="text-secondary">Generate Public Key (pk) and Secret Key (sk) for the Ring structure.</p>
+                <button id="btnKeygen" class="btn btn-secondary">Generate Keys</button>
+            </div>
+
+            <div class="section-divider disabled-overlay" id="encryptStep">
+                <h3>3. Encryption Phase</h3>
+                <p class="text-secondary">Masks the integer polynomial m(X) into ciphertexts (c0, c1).</p>
+                <button id="btnEncrypt" class="btn btn-secondary">Encrypt Polynomial</button>
+            </div>
+
+            <div class="section-divider disabled-overlay" id="decryptStep">
+                <h3>4. Decryption Phase</h3>
+                <p class="text-secondary">Uses the Secret Key to recover the noisy polynomial m'(X).</p>
+                <button id="btnDecrypt" class="btn btn-secondary">Decrypt Ciphertext</button>
+            </div>
+
+            <div class="section-divider disabled-overlay" id="decodeStep">
+                <h3>5. Vector Decoding</h3>
+                <p class="text-secondary">Evaluates and un-scales m'(X) back to the approximate vector z'.</p>
+                <button id="btnDecode" class="btn btn-primary">Decode Vector</button>
+            </div>
+        </section>
+
+        <section class="card log-panel">
+            <h2>Execution Log</h2>
+            <div id="logOutput" class="log-container"></div>
+        </section>
+    </main>
+</div>
+
+<script>
+    let encodedPoly = null;
+    let sk = null, pk0 = null, pk1 = null;
+    let cipherC0 = null, cipherC1 = null;
+    let decryptedPoly = null;
+
+    const go = new Go();
+    WebAssembly.instantiateStreaming(fetch("ckks.wasm"), go.importObject).then((result) => {
+        go.run(result.instance);
+        const btn = document.getElementById('btnEncode');
+        btn.disabled = false;
+        btn.innerText = "Encode Vector";
+        log('System', 'Go WebAssembly module (ckks.wasm) successfully loaded!');
+    }).catch(err => {
+        console.error(err);
+        log('Error', 'Failed to load ckks.wasm. Did you compile it?');
+    });
+
+    const log = (title, data) => {
+        const logBox = document.getElementById('logOutput');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        
+        let displayData = data;
+        if (typeof data === 'object') {
+            displayData = JSON.stringify(data).replace(/,/g, ', ');
+            if(displayData.length > 150) displayData = displayData.substring(0, 150) + '...]';
+        }
+        
+        entry.innerHTML = `<div class="log-title">${title}</div><div class="log-data">${displayData}</div>`;
+        logBox.appendChild(entry);
+        logBox.scrollTop = logBox.scrollHeight;
+    };
+
+    // 1. Encode
+    document.getElementById('btnEncode').addEventListener('click', () => {
+        const z0 = { re: parseFloat(document.getElementById('z0_re').value), im: parseFloat(document.getElementById('z0_im').value) };
+        const z1 = { re: parseFloat(document.getElementById('z1_re').value), im: parseFloat(document.getElementById('z1_im').value) };
+        const inputVec = [z0, z1];
+        
+        log('Action', 'Calling goCkksEncode() with Z = ' + JSON.stringify(inputVec));
+        
+        const resStr = window.goCkksEncode(JSON.stringify(inputVec));
+        encodedPoly = JSON.parse(resStr);
+        
+        log('Encoded Polynomial m(X)', encodedPoly);
+
+        document.getElementById('btnEncode').disabled = true;
+        document.getElementById('keygenStep').classList.add('active');
+    });
+
+    // 2. KeyGen
+    document.getElementById('btnKeygen').addEventListener('click', () => {
+        log('Action', 'Generating RLWE Keys...');
+        const keysJsonStr = window.goCkksKeyGen();
+        const keys = JSON.parse(keysJsonStr);
+        
+        sk = keys.sk; pk0 = keys.pk0; pk1 = keys.pk1;
+        log('Keys Generated', 'sk (Secret), pk0, pk1 (Public) active.');
+
+        document.getElementById('btnKeygen').disabled = true;
+        document.getElementById('encryptStep').classList.add('active');
+    });
+
+    // 3. Encrypt
+    document.getElementById('btnEncrypt').addEventListener('click', () => {
+        log('Action', 'Encrypting m(X)...');
+        const resStr = window.goCkksEncrypt(
+            JSON.stringify(encodedPoly),
+            JSON.stringify(pk0),
+            JSON.stringify(pk1)
+        );
+        const cipher = JSON.parse(resStr);
+        cipherC0 = cipher.c0;
+        cipherC1 = cipher.c1;
+        
+        log('Encryption Complete', `c0: [${cipherC0.slice(0,3)}...]\nc1: [${cipherC1.slice(0,3)}...]`);
+
+        document.getElementById('btnEncrypt').disabled = true;
+        document.getElementById('decryptStep').classList.add('active');
+    });
+
+    // 4. Decrypt
+    document.getElementById('btnDecrypt').addEventListener('click', () => {
+        log('Action', 'Decrypting ciphertexts with sk...');
+        const resStr = window.goCkksDecrypt(
+            JSON.stringify(cipherC0),
+            JSON.stringify(cipherC1),
+            JSON.stringify(sk)
+        );
+        decryptedPoly = JSON.parse(resStr);
+        
+        log('Decrypted Noisy Poly m\'(X)', decryptedPoly);
+
+        document.getElementById('btnDecrypt').disabled = true;
+        document.getElementById('decodeStep').classList.add('active');
+    });
+
+    // 5. Decode
+    document.getElementById('btnDecode').addEventListener('click', () => {
+        log('Action', 'Decoding m\'(X) to approximate Z...');
+        const resStr = window.goCkksDecode(JSON.stringify(decryptedPoly));
+        const decodedVec = JSON.parse(resStr);
+        
+        let displayStr = decodedVec.map(c => `(${c.re.toFixed(4)} ${c.im >= 0 ? '+' : '-'} ${Math.abs(c.im).toFixed(4)}i)`).join(', ');
+        log('Decoded Approximate Z\'', `<span class="log-highlight">${displayStr}</span>`);
+
+        document.getElementById('btnDecode').disabled = true;
+    });
+</script>
+</body>
+</html>
